@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title></title>
+</head>
+<body>
+<script src="./jquery-3.6.0.js"></script>
+<!-- Stocker les personnes en localStorage -->
+<!-- Lister les personnes dans un tableau HTML, dont la dernière colonne est une action pour modifier la ligne -->
+<!-- Au click sur modifier, afficher un formulaire avec les données de la personne pré-remplit, et modifier la ligne en localStorage à la soumission du formulaire -->
+<script>
+    let personsListTemplateString = `
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>Cars</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    `;
+
+    let editFormTemplate = `
+        <form>
+            <div>
+                <label for="name">Name</label>
+                <input type="text" name="name" id="name">
+            </div>
+            <div>
+                <label for="age">Age</label>
+                <input type="text" name="age" id="age">
+            </div>
+            <div>
+                <label for="cars">Cars</label>
+                <input type="text" name="cars" id="cars">
+            </div>
+            <div><input type="submit"></div>
+        </form>
+    `;
+
+    let getPersons = function() {
+        $.get('/person.json')
+        .then(function (persons) {
+            let personsObject = {};
+
+            $.each(persons, function(index, person) {
+                personsObject[index] = person;
+            }) 
+            localStorage.setItem('persons', JSON.stringify(personsObject));
+
+            listPersons();
+        })
+    }
+
+    let listPersons = function () {
+        personsListTemplate = $(personsListTemplateString);
+
+        if (localStorage.getItem('persons') === null) {getPersons(); return; };
+
+        let persons = JSON.parse(localStorage.getItem('persons'));
+
+        let personTemplate = '';
+        Object.keys(persons).forEach(function(id) {
+            personTemplate += `
+                <tr>
+                    <td>${persons[id].name}</td>
+                    <td>${persons[id].age}</td>
+                    <td>${persons[id].cars.join(', ')}</td>
+                    <td><button data-id='${id}' class="edit">Edit</button></td>
+                </tr>
+            `;
+        })
+
+        $('tbody', personsListTemplate).append(personTemplate);
+        $('body').append(personsListTemplate);
+
+        $('button.edit').on('click', function (event) {
+            let personId = $(this).data('id');
+
+            $('form').remove();
+            $('table').after(editFormTemplate);
+            $('form').data('id', personId);
+
+            let person = persons[parseInt(personId)];
+
+            $('form #name').val(person.name);
+            $('form #age').val(person.age);
+            $('form #cars').val(person.cars.join(', '));
+
+            $('form').on('submit', function (event) {
+                event.preventDefault();
+                let name = $("#name", $(this)).val()
+                let age = $("#age", $(this)).val()
+                let cars = $("#cars", $(this)).val().split(',')
+
+                let person = {name, age, cars};
+                persons[$(this).data('id')] = person;
+
+                localStorage.setItem('persons', JSON.stringify(persons));
+
+                $('table, form').remove();
+                listPersons();
+            });
+        })
+    }
+
+    listPersons();
+</script>
+
+</body>
+</html>
